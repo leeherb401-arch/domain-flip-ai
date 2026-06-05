@@ -703,7 +703,9 @@ async function runPipeline() {
     const sys     = agent.prompt + (memory?'\n\nLESSONS:\n'+memory:'') + (peerCtx?'\n\nPEER INTEL:\n'+peerCtx:'');
 
     try {
-      const res  = await fetch('https://api.anthropic.com/v1/messages',{
+      const res  = await fetch('/api/agent',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
         body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:700,system:sys,messages:[{role:'user',content:step.prompt}]}),
       });
       const data  = await res.json();
