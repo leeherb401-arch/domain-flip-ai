@@ -542,6 +542,7 @@ async function sendChat() {
   try {
     const res  = await fetch('/api/agent', {
       method: 'POST',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:800, system:sysPrompt, messages:history }),
     });
     const data  = await res.json();
@@ -567,6 +568,7 @@ async function extractLesson(agent, task, response) {
   try {
     const res  = await fetch('/api/agent', {
       method:'POST',
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:120, system:'Extract one lesson. Return ONLY valid JSON: {"type":"win" or "mistake","lesson":"one sentence"}. No markdown.',
         messages:[{role:'user',content:`Agent:${agent.name}\nTask:${task}\nOutput:${response.slice(0,400)}\n\nOne lesson to remember?`}] }),
     });
@@ -586,6 +588,7 @@ async function peerCritique(critic, target, output, topic) {
   try {
     const res  = await fetch('/api/agent', {
       method:'POST',
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:180, system:`You are ${critic.name} (${critic.role}). Review ${target.name}'s work. Be direct, 1-2 issues max, 2 sentences. Start with "${critic.name} to ${target.name}:"`,
         messages:[{role:'user',content:`Topic:${topic}\n${target.name}:\n${output.slice(0,500)}`}] }),
     });
