@@ -318,7 +318,6 @@
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────
-const ANTHROPIC_KEY = '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';
 
 const AGENTS = [
   { id:'scout',      name:'SCOUT',      role:'Domain Hunter',    avatar:'🔭', color:'#00FFB2',
@@ -541,9 +540,8 @@ async function sendChat() {
   const history   = chatHistory[activeAgent.id].slice(-10).map(m=>({role:m.role,content:m.content}));
 
   try {
-    const res  = await fetch('https://api.anthropic.com/v1/messages', {
+    const res  = await fetch('/api/agent', {
       method: 'POST',
-      headers: { 'Content-Type':'application/json', 'x-api-key':ANTHROPIC_KEY, 'anthropic-version':'2023-06-01' },
       body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:800, system:sysPrompt, messages:history }),
     });
     const data  = await res.json();
@@ -567,9 +565,8 @@ async function sendChat() {
 
 async function extractLesson(agent, task, response) {
   try {
-    const res  = await fetch('https://api.anthropic.com/v1/messages', {
+    const res  = await fetch('/api/agent', {
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01'},
       body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:120, system:'Extract one lesson. Return ONLY valid JSON: {"type":"win" or "mistake","lesson":"one sentence"}. No markdown.',
         messages:[{role:'user',content:`Agent:${agent.name}\nTask:${task}\nOutput:${response.slice(0,400)}\n\nOne lesson to remember?`}] }),
     });
@@ -587,9 +584,8 @@ async function extractLesson(agent, task, response) {
 
 async function peerCritique(critic, target, output, topic) {
   try {
-    const res  = await fetch('https://api.anthropic.com/v1/messages', {
+    const res  = await fetch('/api/agent', {
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01'},
       body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:180, system:`You are ${critic.name} (${critic.role}). Review ${target.name}'s work. Be direct, 1-2 issues max, 2 sentences. Start with "${critic.name} to ${target.name}:"`,
         messages:[{role:'user',content:`Topic:${topic}\n${target.name}:\n${output.slice(0,500)}`}] }),
     });
@@ -705,7 +701,6 @@ async function runPipeline() {
 
     try {
       const res  = await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST', headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01'},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,system:sys,messages:[{role:'user',content:step.prompt}]}),
       });
       const data  = await res.json();
