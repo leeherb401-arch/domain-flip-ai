@@ -543,7 +543,7 @@ async function sendChat() {
     const res  = await fetch('/api/agent', {
       method: 'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:800, system:sysPrompt, messages:history }),
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:800, system:sysPrompt, messages:history }),
     });
     const data  = await res.json();
     const reply = data.content?.[0]?.text || 'Error: No response.';
@@ -569,7 +569,7 @@ async function extractLesson(agent, task, response) {
     const res  = await fetch('/api/agent', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:120, system:'Extract one lesson. Return ONLY valid JSON: {"type":"win" or "mistake","lesson":"one sentence"}. No markdown.',
+      body:JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:120, system:'Extract one lesson. Return ONLY valid JSON: {"type":"win" or "mistake","lesson":"one sentence"}. No markdown.',
         messages:[{role:'user',content:`Agent:${agent.name}\nTask:${task}\nOutput:${response.slice(0,400)}\n\nOne lesson to remember?`}] }),
     });
     const data = await res.json();
@@ -589,7 +589,7 @@ async function peerCritique(critic, target, output, topic) {
     const res  = await fetch('/api/agent', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:180, system:`You are ${critic.name} (${critic.role}). Review ${target.name}'s work. Be direct, 1-2 issues max, 2 sentences. Start with "${critic.name} to ${target.name}:"`,
+      body:JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:180, system:`You are ${critic.name} (${critic.role}). Review ${target.name}'s work. Be direct, 1-2 issues max, 2 sentences. Start with "${critic.name} to ${target.name}:"`,
         messages:[{role:'user',content:`Topic:${topic}\n${target.name}:\n${output.slice(0,500)}`}] }),
     });
     const data = await res.json();
@@ -704,7 +704,7 @@ async function runPipeline() {
 
     try {
       const res  = await fetch('https://api.anthropic.com/v1/messages',{
-        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,system:sys,messages:[{role:'user',content:step.prompt}]}),
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:700,system:sys,messages:[{role:'user',content:step.prompt}]}),
       });
       const data  = await res.json();
       const reply = data.content?.[0]?.text||'Error';
