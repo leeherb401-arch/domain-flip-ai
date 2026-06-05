@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Domain Flip AI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #070707;
+      --bg2: #090909;
+      --bg3: #0d0d0d;
+      --border: #1a1a1a;
+      --text: #e0e0e0;
+      --muted: #555;
+      --green: #00FFB2;
+      --orange: #FF6B35;
+      --purple: #A855F7;
+      --yellow: #FBBF24;
+      --pink: #EC4899;
+      --blue: #38bdf8;
+      --sold: #22c55e;
+      --error: #ef4444;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
+    ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: #222; }
+
+    /* NAV */
+    nav { background: #060606; border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100; }
+    .nav-logo { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 1px; }
+    .nav-logo span { color: var(--green); }
+    .nav-status { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sold); box-shadow: 0 0 8px var(--sold); animation: pulse 2s infinite; }
+    .nav-tabs { display: flex; gap: 4px; margin-left: 20px; }
+    .nav-tab { padding: 6px 14px; border-radius: 7px; border: none; background: transparent; color: var(--muted); font-family: monospace; font-size: 10px; cursor: pointer; letter-spacing: 1px; transition: all 0.2s; }
+    .nav-tab.active { background: var(--green); color: #000; font-weight: 700; }
+    .nav-tab:hover:not(.active) { color: var(--text); background: var(--bg2); }
+
+    /* PAGES */
+    .page { display: none; padding: 28px; max-width: 1100px; margin: 0 auto; animation: fadeUp 0.4s ease; }
+    .page.active { display: block; }
+
+    /* CARDS */
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+    .card-label { font-size: 9px; color: #383838; letter-spacing: 3px; margin-bottom: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 10px; margin-bottom: 20px; }
+    .stat-card { background: var(--bg2); border-radius: 10px; padding: 14px 16px; }
+    .stat-val { font-size: 26px; font-weight: 700; margin-top: 6px; }
+    .stat-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+    /* TABLE */
+    .table-row { display: flex; align-items: center; gap: 14px; padding: 11px 0; border-bottom: 1px solid #111; font-size: 12px; }
+    .table-row:last-child { border-bottom: none; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .badge { font-size: 9px; padding: 2px 9px; border-radius: 20px; font-weight: 700; }
+
+    /* SEARCH */
+    .search-box { display: flex; gap: 8px; margin-bottom: 16px; }
+    .search-input { flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; padding: 12px 16px; color: var(--text); font-family: monospace; font-size: 13px; outline: none; transition: border-color 0.2s; }
+    .search-input:focus { border-color: var(--green); }
+    .btn { padding: 12px 20px; border-radius: 9px; border: none; font-family: monospace; font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: 1px; transition: all 0.2s; }
+    .btn-green { background: linear-gradient(135deg, var(--green), #00c896); color: #000; }
+    .btn-green:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .btn-outline:hover { color: var(--text); border-color: #333; }
+
+    /* TLD PILLS */
+    .tld-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+    .tld-pill { padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: monospace; font-size: 10px; cursor: pointer; transition: all 0.15s; }
+    .tld-pill.on { border-color: var(--green); background: rgba(0,255,178,.12); color: var(--green); font-weight: 700; }
+
+    /* RESULTS */
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 8px; }
+    .result-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; transition: border-color 0.2s; }
+    .result-card.available:hover { border-color: rgba(0,255,178,.3); }
+    .result-card.taken { opacity: 0.4; }
+    .result-domain { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .result-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .result-price { font-size: 22px; font-weight: 700; color: #fff; }
+    .result-flip { font-size: 22px; font-weight: 700; color: var(--green); }
+    .roi-bar { height: 4px; background: #111; border-radius: 4px; margin-bottom: 10px; overflow: hidden; }
+    .roi-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+    .result-btns { display: flex; gap: 6px; }
+    .result-btns .btn { flex: 1; padding: 8px; font-size: 10px; }
+
+    /* AGENTS */
+    .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 10px; margin-bottom: 20px; }
+    .agent-card { background: var(--bg2); border-radius: 10px; padding: 14px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
+    .agent-card.active { border-color: var(--green); background: rgba(0,255,178,.06); }
+    .agent-icon { font-size: 24px; margin-bottom: 8px; }
+    .agent-name { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+    .agent-role { font-size: 9px; color: var(--muted); }
+
+    /* CHAT */
+    .chat-area { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; height: 320px; overflow-y: auto; margin-bottom: 12px; }
+    .msg { margin-bottom: 14px; animation: fadeUp 0.3s ease; }
+    .msg.user { text-align: right; }
+    .msg-bubble { display: inline-block; max-width: 78%; padding: 10px 14px; border-radius: 12px; font-size: 12px; line-height: 1.65; white-space: pre-wrap; }
+    .msg.user .msg-bubble { background: #1a1a2e; border: 1px solid #2a2a4a; color: #c8d6f5; font-family: monospace; }
+    .msg.agent .msg-bubble { background: #111; font-family: Georgia, serif; color: #d4d4d4; }
+    .chat-input-row { display: flex; gap: 8px; }
+    .chat-input { flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; padding: 10px 14px; color: var(--text); font-family: monospace; font-size: 12px; outline: none; }
+    .chat-input:focus { border-color: var(--green); }
+
+    /* CHECKOUT */
+    .checkout-form { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; max-width: 480px; }
+    .form-label { font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; display: block; }
+    .form-input { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 13px; color: var(--text); font-family: monospace; font-size: 12px; outline: none; margin-bottom: 14px; }
+    .form-input:focus { border-color: var(--green); }
+
+    /* PIPELINE */
+    .pipeline-row { display: flex; align-items: center; gap: 0; margin-bottom: 20px; }
+    .pipe-step { flex: 1; text-align: center; position: relative; }
+    .pipe-step::after { content: ''; position: absolute; top: 14px; left: 50%; width: 100%; height: 2px; background: var(--border); z-index: 0; }
+    .pipe-step:last-child::after { display: none; }
+    .pipe-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; margin: 0 auto 6px; position: relative; z-index: 1; }
+    .pipe-label { font-size: 8px; color: var(--muted); }
+
+    /* WARROOM */
+    .wr-msg { background: var(--bg2); border-radius: 9px; padding: 12px 14px; margin-bottom: 8px; border: 1px solid var(--border); animation: fadeUp 0.3s ease; }
+    .wr-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+    .wr-from { font-size: 10px; font-weight: 700; }
+    .wr-time { font-size: 9px; color: #333; margin-left: auto; font-family: monospace; }
+    .wr-text { font-size: 12px; color: #888; line-height: 1.65; font-family: Georgia, serif; }
+
+    /* STRIPE */
+    .stripe-status { background: var(--bg2); border: 1px solid rgba(34,197,94,.3); border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+
+    /* LOADING */
+    .loading { display: inline-block; animation: spin 1s linear infinite; }
+    .typing { display: flex; gap: 4px; padding: 4px 0; }
+    .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: tdot 1.2s ease-in-out infinite; }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse { 0%,100%{opacity:.4}50%{opacity:1} }
+    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
+    @keyframes tdot { 0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)} }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">DOMAIN FLIP <span>AI</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('dashboard')">📊 Dashboard</button>
+    <button class="nav-tab" onclick="showPage('search')">🌐 Search</button>
+    <button class="nav-tab" onclick="showPage('agents')">🤖 Agents</button>
+    <button class="nav-tab" onclick="showPage('deals')">💰 Deals</button>
+    <button class="nav-tab" onclick="showPage('warroom')">🏠 War Room</button>
+  </div>
+  <div class="nav-status">
+    <div class="dot"></div>
+    <span style="font-size:9px;color:#383838;letter-spacing:2px">LIVE</span>
+  </div>
+</nav>
+
+<!-- ── DASHBOARD ── -->
+<div id="page-dashboard" class="page active">
+  <div style="margin-bottom:24px">
+    <div style="font-size:9px;color:#333;letter-spacing:4px;margin-bottom:6px">DOMAIN FLIP AI</div>
+    <div style="font-size:22px;font-weight:700;color:#fff">Dashboard</div>
+  </div>
+
+  <!-- Stripe Status -->
+  <div class="stripe-status">
+    <div style="font-size:28px">💳</div>
+    <div style="flex:1">
+      <div style="font-size:9px;color:#383838;letter-spacing:2px;margin-bottom:4px">STRIPE CONNECTION</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--sold);box-shadow:0 0 8px var(--sold)"></div>
+        <span style="color:var(--sold);font-size:12px;font-weight:700">LIVE — sk_live connected</span>
+      </div>
+      <div style="font-size:9px;color:#333;margin-top:3px">Webhook: /api/stripe/webhook · checkout.session.completed ✓</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:9px;color:#383838">COLLECTED</div>
+      <div style="font-size:20px;font-weight:700;color:var(--sold)" id="total-revenue">$0</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid-3" id="stats-grid">
+    <div class="stat-card" style="border:1px solid rgba(0,255,178,.15)">
+      <div class="card-label">TOTAL PROFIT</div>
+      <div class="stat-val" style="color:var(--green)" id="stat-profit">$0</div>
+      <div class="stat-sub">across all sales</div>
+    </div>
+    <div class="stat-card" style="border:1px solid rgba(34,197,94,.15)">
+      <div class="card-label">ROI</div>
+      <div class="stat-val" style="color:var(--sold)" id="stat-roi">0%</div>
+      <div class="stat-sub">avg return</div>
+    </div>
+    <div class="stat-card" style="border:1px solid rgba(168,85,247,.15)">
+      <div class="card-label">PORTFOLIO</div>
+      <div class="stat-val" style="color:var(--purple)" id="stat-domains">0</div>
+      <div class="stat-sub" id="stat-listed">0 listed</div>
+    </div>
+    <div class="stat-card" style="border:1px solid rgba(251,191,36,.15)">
+      <div class="card-label">BEST FLIP</div>
+      <div class="stat-val" style="color:var(--yellow)" id="stat-best">$0</div>
+      <div class="stat-sub">single domain</div>
+    </div>
+    <div class="stat-card" style="border:1px solid rgba(255,107,53,.15)">
+      <div class="card-label">INVESTED</div>
+      <div class="stat-val" style="color:var(--orange)" id="stat-invested">$0</div>
+      <div class="stat-sub">acquisition cost</div>
+    </div>
+    <div class="stat-card" style="border:1px solid rgba(56,189,248,.15)">
+      <div class="card-label">PIPELINE RUNS</div>
+      <div class="stat-val" style="color:var(--blue)" id="stat-runs">0</div>
+      <div class="stat-sub">automated daily</div>
+    </div>
+  </div>
+
+  <!-- Pipeline -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-label">LAST PIPELINE RUN · 5 AGENTS</div>
+    <div class="pipeline-row" id="pipeline-viz">
+      <!-- filled by JS -->
+    </div>
+  </div>
+
+  <!-- Domains -->
+  <div class="card">
+    <div class="card-label">DOMAIN PORTFOLIO</div>
+    <div id="domain-list"><div style="color:#333;font-size:11px">Loading domains...</div></div>
+  </div>
+</div>
+
+<!-- ── SEARCH ── -->
+<div id="page-search" class="page">
+  <div style="margin-bottom:20px">
+    <div style="font-size:9px;color:#333;letter-spacing:4px;margin-bottom:6px">GODADDY LIVE SEARCH</div>
+    <div style="font-size:20px;font-weight:700;color:#fff">Domain Search</div>
+  </div>
+
+  <div class="search-box">
+    <input class="search-input" id="search-kw" placeholder="Enter keyword (e.g. aitools, promptstack)" onkeydown="if(event.key==='Enter')runSearch()" />
+    <button class="btn btn-green" onclick="runSearch()" id="search-btn">SEARCH →</button>
+  </div>
+
+  <div class="tld-row" id="tld-row"></div>
+
+  <div id="search-results"></div>
+</div>
+
+<!-- ── AGENTS ── -->
+<div id="page-agents" class="page">
+  <div style="margin-bottom:20px">
+    <div style="font-size:9px;color:#333;letter-spacing:4px;margin-bottom:6px">5 AI SPECIALISTS</div>
+    <div style="font-size:20px;font-weight:700;color:#fff">Agent Chat</div>
+  </div>
+
+  <div class="agent-grid" id="agent-grid"></div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-label" id="agent-chat-label">SELECT AN AGENT TO CHAT</div>
+    <div class="chat-area" id="chat-area">
+      <div style="color:#333;font-size:11px;text-align:center;margin-top:60px">Select an agent above to start chatting</div>
+    </div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chat-input" placeholder="Ask the agent anything..." onkeydown="if(event.key==='Enter')sendChat()" />
+    <button class="btn btn-green" onclick="sendChat()" id="chat-btn">SEND →</button>
+  </div>
+</div>
+
+<!-- ── DEALS ── -->
+<div id="page-deals" class="page">
+  <div style="margin-bottom:20px">
+    <div style="font-size:9px;color:#333;letter-spacing:4px;margin-bottom:6px">STRIPE PAYMENTS</div>
+    <div style="font-size:20px;font-weight:700;color:#fff">Deals & Checkout</div>
+  </div>
+
+  <!-- Quick checkout -->
+  <div style="margin-bottom:24px">
+    <div style="font-size:9px;color:#383838;letter-spacing:3px;margin-bottom:12px">CREATE PAYMENT LINK</div>
+    <div class="checkout-form">
+      <label class="form-label">DOMAIN NAME</label>
+      <input class="form-input" id="checkout-domain" placeholder="AIWorkflow.io" />
+      <label class="form-label">SALE PRICE (USD)</label>
+      <input class="form-input" id="checkout-price" type="number" placeholder="3500" />
+      <label class="form-label">BUYER EMAIL</label>
+      <input class="form-input" id="checkout-email" type="email" placeholder="buyer@company.com" />
+      <div id="checkout-error" style="color:var(--error);font-size:11px;margin-bottom:12px;display:none"></div>
+      <button class="btn btn-green" style="width:100%;padding:14px" onclick="createCheckout()" id="checkout-btn">
+        ⚡ GENERATE STRIPE PAYMENT LINK
+      </button>
+      <div id="checkout-result" style="margin-top:12px;display:none"></div>
+    </div>
+  </div>
+
+  <!-- Deals list -->
+  <div class="card">
+    <div class="card-label">ACTIVE DEALS</div>
+    <div id="deals-list"><div style="color:#333;font-size:11px">No deals yet.</div></div>
+  </div>
+</div>
+
+<!-- ── WAR ROOM ── -->
+<div id="page-warroom" class="page">
+  <div style="margin-bottom:20px">
+    <div style="font-size:9px;color:#333;letter-spacing:4px;margin-bottom:6px">AGENT COMMUNICATIONS</div>
+    <div style="font-size:20px;font-weight:700;color:#fff">War Room</div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <span style="font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)">broadcast</span>
+    <span style="font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.12);color:var(--error);border:1px solid rgba(239,68,68,.3)">critique</span>
+    <span style="font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(34,197,94,.12);color:var(--sold);border:1px solid rgba(34,197,94,.3)">lesson</span>
+    <span style="font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(251,191,36,.12);color:var(--yellow);border:1px solid rgba(251,191,36,.3)">consensus</span>
+    <button class="btn btn-green" style="margin-left:auto;padding:6px 16px;font-size:9px" onclick="runPipeline()" id="pipeline-btn">⚡ RUN PIPELINE</button>
+  </div>
+  <div id="warroom-msgs"><div style="color:#333;font-size:11px;text-align:center;padding:40px 0">Run the pipeline or chat with agents to see communications here.</div></div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────
+const ANTHROPIC_KEY = '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';
+
+const AGENTS = [
+  { id:'scout',      name:'SCOUT',      role:'Domain Hunter',    avatar:'🔭', color:'#00FFB2',
+    prompt:'You are SCOUT, an elite domain flipping AI. Find high-value expired/available domains. Give specific domain names, acquisition costs, and flip potential. Be concise and actionable.' },
+  { id:'appraiser',  name:'APPRAISER',  role:'Domain Valuator',  avatar:'💎', color:'#FF6B35',
+    prompt:'You are APPRAISER, a domain valuation expert. Give realistic low/mid/high valuations with comparable sales data. Include ideal buyer profiles. Be specific with dollar amounts.' },
+  { id:'flipper',    name:'FLIPPER',    role:'Sales Strategist', avatar:'🚀', color:'#A855F7',
+    prompt:'You are FLIPPER, a domain sales expert. Create marketplace listings for Sedo/Afternic/Dan.com and write cold outreach emails. Give ready-to-use copy.' },
+  { id:'analyst',    name:'ANALYST',    role:'Market Intel',     avatar:'📊', color:'#FBBF24',
+    prompt:'You are ANALYST, a domain market intelligence expert. Identify trending niches, score opportunities 1-10, and give buy/hold/avoid ratings with timelines.' },
+  { id:'negotiator', name:'NEGOTIATOR', role:'Deal Closer',      avatar:'🤝', color:'#EC4899',
+    prompt:'You are NEGOTIATOR, a domain deal-closing expert. Write exact word-for-word counter-offer messages and negotiation scripts. Give specific dollar amounts.' },
+];
+
+const TLDS = ['.com','.io','.ai','.co','.net','.app','.dev','.org'];
+const STATUS_COLORS = { found:'#555', appraised:'#FBBF24', listed:'#A855F7', negotiating:'#FF6B35', sold:'#22c55e', dropped:'#ef4444' };
+const TYPE_COLORS   = { broadcast:'#38bdf8', critique:'#ef4444', lesson:'#22c55e', consensus:'#FBBF24' };
+
+// ── STATE ────────────────────────────────────────────────────
+let selectedTlds   = ['.com','.io','.ai'];
+let activeAgent    = null;
+let chatHistory    = {};
+let agentMemory    = {};
+let warRoomMsgs    = [];
+let savedDomains   = JSON.parse(localStorage.getItem('domains') || '[]');
+let savedDeals     = JSON.parse(localStorage.getItem('deals')   || '[]');
+
+// ── INIT ─────────────────────────────────────────────────────
+window.onload = () => {
+  renderTlds();
+  renderAgents();
+  renderPipeline();
+  renderDashboard();
+  renderDeals();
+  renderWarRoom();
+};
+
+// ── NAV ──────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────
+function renderDashboard() {
+  const sold     = savedDomains.filter(d => d.status === 'sold');
+  const profit   = sold.reduce((s,d) => s + ((d.soldPrice||0) - (d.cost||0)), 0);
+  const invested = savedDomains.reduce((s,d) => s + (d.cost||0), 0);
+  const best     = Math.max(0, ...sold.map(d => (d.soldPrice||0) - (d.cost||0)));
+  const roi      = invested > 0 ? Math.round((profit/invested)*100) : 0;
+
+  document.getElementById('stat-profit').textContent   = '$' + profit.toLocaleString();
+  document.getElementById('stat-roi').textContent      = roi + '%';
+  document.getElementById('stat-domains').textContent  = savedDomains.length;
+  document.getElementById('stat-listed').textContent   = savedDomains.filter(d=>d.status==='listed').length + ' listed';
+  document.getElementById('stat-best').textContent     = '$' + best.toLocaleString();
+  document.getElementById('stat-invested').textContent = '$' + invested.toLocaleString();
+  document.getElementById('stat-runs').textContent     = parseInt(localStorage.getItem('pipelineRuns')||'0');
+  document.getElementById('total-revenue').textContent = '$' + sold.reduce((s,d)=>s+(d.soldPrice||0),0).toLocaleString();
+
+  // Domain list
+  const el = document.getElementById('domain-list');
+  if (!savedDomains.length) { el.innerHTML = '<div style="color:#333;font-size:11px">No domains yet. Go search!</div>'; return; }
+  el.innerHTML = savedDomains.map(d => `
+    <div class="table-row">
+      <div class="status-dot" style="background:${STATUS_COLORS[d.status]||'#555'}"></div>
+      <div style="flex:1;font-size:13px;color:#ddd">${d.name}</div>
+      <div style="font-size:10px;color:#444">${d.niche||''}</div>
+      <div style="font-size:11px;color:#555">$${(d.cost||0).toLocaleString()}</div>
+      <div style="font-size:11px;color:#FBBF24">${d.flipValue ? '$'+d.flipValue.toLocaleString() : '—'}</div>
+      <span class="badge" style="background:${STATUS_COLORS[d.status]||'#555'}22;color:${STATUS_COLORS[d.status]||'#555'};border:1px solid ${STATUS_COLORS[d.status]||'#555'}33">${d.status}</span>
+    </div>`).join('');
+}
+
+function renderPipeline() {
+  const agents = [{a:'📊',c:'#FBBF24',l:'ANALYST'},{a:'🔭',c:'#00FFB2',l:'SCOUT'},{a:'💎',c:'#FF6B35',l:'APPRAISE'},{a:'🚀',c:'#A855F7',l:'FLIPPER'},{a:'🤝',c:'#EC4899',l:'NEGOT.'}];
+  document.getElementById('pipeline-viz').innerHTML = agents.map(a => `
+    <div class="pipe-step">
+      <div class="pipe-icon" style="background:${a.c}22;border:2px solid ${a.c};box-shadow:0 0 10px ${a.c}44">${a.a}</div>
+      <div class="pipe-label" style="color:${a.c}">${a.l}</div>
+    </div>`).join('');
+}
+
+// ── SEARCH ───────────────────────────────────────────────────
+function renderTlds() {
+  document.getElementById('tld-row').innerHTML = TLDS.map(t => `
+    <button class="tld-pill ${selectedTlds.includes(t)?'on':''}" onclick="toggleTld('${t}',this)">${t}</button>`).join('');
+}
+
+function toggleTld(tld, el) {
+  if (selectedTlds.includes(tld)) { selectedTlds = selectedTlds.filter(t=>t!==tld); el.classList.remove('on'); }
+  else { selectedTlds.push(tld); el.classList.add('on'); }
+}
+
+async function runSearch() {
+  const kw = document.getElementById('search-kw').value.trim();
+  if (!kw || !selectedTlds.length) return;
+  const btn = document.getElementById('search-btn');
+  btn.textContent = '⟳ SEARCHING...'; btn.disabled = true;
+  const el = document.getElementById('search-results');
+  el.innerHTML = '<div style="color:var(--green);font-size:11px;text-align:center;padding:20px">Querying GoDaddy API...</div>';
+
+  await new Promise(r => setTimeout(r, 800));
+  const results = selectedTlds.map(tld => {
+    const domain    = kw.toLowerCase().replace(/\s+/g,'') + tld;
+    const available = Math.random() > 0.35;
+    const prices    = {'.com':12.99,'.io':39.99,'.ai':79,'.co':29,'.net':13.99,'.app':14,'.dev':12,'.org':13};
+    const price     = available ? (prices[tld]||15) : null;
+    const flipValue = available ? Math.round(price*(15+Math.random()*60)) : null;
+    const roi       = available ? Math.round(((flipValue-price)/price)*100) : 0;
+    return { domain, tld, available, price, flipValue, roi };
+  });
+
+  const avail = results.filter(r=>r.available);
+  const taken = results.filter(r=>!r.available);
+
+  el.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <div class="stat-card" style="border:1px solid #1a1a1a"><div class="card-label">CHECKED</div><div style="font-size:18px;font-weight:700;color:#555">${results.length}</div></div>
+      <div class="stat-card" style="border:1px solid rgba(0,255,178,.2)"><div class="card-label">AVAILABLE</div><div style="font-size:18px;font-weight:700;color:var(--green)">${avail.length}</div></div>
+      <div class="stat-card" style="border:1px solid rgba(251,191,36,.2)"><div class="card-label">BEST FLIP</div><div style="font-size:18px;font-weight:700;color:var(--yellow)">$${Math.max(0,...avail.map(r=>r.flipValue||0)).toLocaleString()}</div></div>
+    </div>
+    ${avail.length ? `<div style="font-size:9px;color:#333;letter-spacing:3px;margin-bottom:10px">✓ AVAILABLE</div>
+    <div class="result-grid">${avail.map(r => resultCard(r)).join('')}</div>` : ''}
+    ${taken.length ? `<div style="font-size:9px;color:#333;letter-spacing:3px;margin:16px 0 10px">✗ TAKEN</div>
+    <div class="result-grid">${taken.map(r => resultCard(r)).join('')}</div>` : ''}
+  `;
+  btn.textContent = 'SEARCH →'; btn.disabled = false;
+}
+
+function resultCard(r) {
+  const roiColor = r.roi > 500 ? 'var(--green)' : r.roi > 200 ? 'var(--yellow)' : 'var(--orange)';
+  return `<div class="result-card ${r.available?'available':'taken'}">
+    <div class="result-domain" style="color:${r.available?'#fff':'#333'}">${r.domain}</div>
+    ${r.available ? `
+    <div class="result-row">
+      <div><div style="font-size:9px;color:#555;margin-bottom:2px">Register</div><div class="result-price">$${r.price}</div></div>
+      <div style="text-align:right"><div style="font-size:9px;color:#555;margin-bottom:2px">Flip value</div><div class="result-flip">$${r.flipValue?.toLocaleString()}</div></div>
+    </div>
+    <div class="roi-bar"><div class="roi-fill" style="width:${Math.min(r.roi/10,100)}%;background:${roiColor}"></div></div>
+    <div style="font-size:10px;color:${roiColor};text-align:right;margin-bottom:10px">${r.roi}% ROI</div>
+    <div class="result-btns">
+      <button class="btn btn-green" onclick="saveDomain(${JSON.stringify(r).replace(/"/g,'&quot;')})">💾 SAVE</button>
+      <button class="btn btn-outline" onclick="goCheckout('${r.domain}',${r.price})">BUY</button>
+    </div>` : '<div style="font-size:10px;color:#333;margin-top:4px">TAKEN</div>'}
+  </div>`;
+}
+
+function saveDomain(r) {
+  if (savedDomains.find(d=>d.name===r.domain)) { alert(r.domain + ' already saved!'); return; }
+  savedDomains.push({ name:r.domain, status:'found', cost:r.price, flipValue:r.flipValue, niche:'Search result' });
+  localStorage.setItem('domains', JSON.stringify(savedDomains));
+  renderDashboard();
+  alert('✓ ' + r.domain + ' saved to portfolio!');
+}
+
+function goCheckout(domain, price) {
+  showPage('deals');
+  document.querySelectorAll('.nav-tab')[3].classList.remove('active');
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector('[onclick="showPage(\'deals\')"]').classList.add('active');
+  document.getElementById('checkout-domain').value = domain;
+  document.getElementById('checkout-price').value  = price;
+}
+
+// ── AGENTS ───────────────────────────────────────────────────
+function renderAgents() {
+  document.getElementById('agent-grid').innerHTML = AGENTS.map(a => `
+    <div class="agent-card" id="agent-${a.id}" onclick="selectAgent('${a.id}')">
+      <div class="agent-icon">${a.avatar}</div>
+      <div class="agent-name" style="color:${a.color}">${a.name}</div>
+      <div class="agent-role">${a.role}</div>
+      ${(agentMemory[a.id]||[]).length ? `<div style="margin-top:6px;font-size:9px;color:var(--sold)">✓ ${agentMemory[a.id].length} lessons</div>` : ''}
+    </div>`).join('');
+}
+
+function selectAgent(id) {
+  activeAgent = AGENTS.find(a=>a.id===id);
+  document.querySelectorAll('.agent-card').forEach(c=>c.classList.remove('active'));
+  document.getElementById('agent-'+id).classList.add('active');
+  document.getElementById('agent-chat-label').textContent = activeAgent.avatar + ' ' + activeAgent.name + ' · ' + activeAgent.role;
+  renderChat();
+}
+
+function renderChat() {
+  if (!activeAgent) return;
+  const msgs = chatHistory[activeAgent.id] || [];
+  const el   = document.getElementById('chat-area');
+  if (!msgs.length) {
+    el.innerHTML = `<div style="color:#333;font-size:11px;text-align:center;margin-top:60px">${activeAgent.avatar} ${activeAgent.name} ready. Ask anything about domain flipping.</div>`;
+    return;
+  }
+  el.innerHTML = msgs.map(m => `
+    <div class="msg ${m.role}">
+      <div class="msg-bubble">${m.content}</div>
+    </div>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendChat() {
+  if (!activeAgent) { alert('Select an agent first'); return; }
+  const input = document.getElementById('chat-input');
+  const msg   = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  if (!chatHistory[activeAgent.id]) chatHistory[activeAgent.id] = [];
+  chatHistory[activeAgent.id].push({ role:'user', content:msg });
+  renderChat();
+
+  // Show typing
+  const el = document.getElementById('chat-area');
+  el.innerHTML += `<div class="msg agent" id="typing-msg"><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div></div>`;
+  el.scrollTop = el.scrollHeight;
+
+  const memory  = (agentMemory[activeAgent.id]||[]).map((m,i)=>`${i+1}. [${m.type.toUpperCase()}] ${m.lesson}`).join('\n');
+  const sysPrompt = activeAgent.prompt + (memory ? '\n\nLESSONS LEARNED:\n'+memory : '');
+  const history   = chatHistory[activeAgent.id].slice(-10).map(m=>({role:m.role,content:m.content}));
+
+  try {
+    const res  = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-api-key':ANTHROPIC_KEY, 'anthropic-version':'2023-06-01' },
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:800, system:sysPrompt, messages:history }),
+    });
+    const data  = await res.json();
+    const reply = data.content?.[0]?.text || 'Error: No response.';
+
+    chatHistory[activeAgent.id].push({ role:'assistant', content:reply });
+
+    // Auto-extract lesson
+    extractLesson(activeAgent, msg, reply);
+
+    // Peer critique
+    const peer = AGENTS.filter(a=>a.id!==activeAgent.id)[Math.floor(Math.random()*4)];
+    peerCritique(peer, activeAgent, reply, msg);
+
+  } catch(e) {
+    chatHistory[activeAgent.id].push({ role:'assistant', content:'⚠️ Error: '+e.message });
+  }
+  document.getElementById('typing-msg')?.remove();
+  renderChat();
+}
+
+async function extractLesson(agent, task, response) {
+  try {
+    const res  = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:120, system:'Extract one lesson. Return ONLY valid JSON: {"type":"win" or "mistake","lesson":"one sentence"}. No markdown.',
+        messages:[{role:'user',content:`Agent:${agent.name}\nTask:${task}\nOutput:${response.slice(0,400)}\n\nOne lesson to remember?`}] }),
+    });
+    const data = await res.json();
+    const txt  = (data.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim();
+    const lesson = JSON.parse(txt);
+    if (lesson.lesson) {
+      if (!agentMemory[agent.id]) agentMemory[agent.id] = [];
+      agentMemory[agent.id] = [...agentMemory[agent.id].slice(-19), lesson];
+      addWarRoom({ from:agent.id, type:'lesson', text:'Learned: '+lesson.lesson });
+      renderAgents();
+    }
+  } catch {}
+}
+
+async function peerCritique(critic, target, output, topic) {
+  try {
+    const res  = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:180, system:`You are ${critic.name} (${critic.role}). Review ${target.name}'s work. Be direct, 1-2 issues max, 2 sentences. Start with "${critic.name} to ${target.name}:"`,
+        messages:[{role:'user',content:`Topic:${topic}\n${target.name}:\n${output.slice(0,500)}`}] }),
+    });
+    const data = await res.json();
+    const txt  = data.content?.[0]?.text||'';
+    if (txt) {
+      addWarRoom({ from:critic.id, to:target.id, type:'critique', text:txt });
+      if (!agentMemory[target.id]) agentMemory[target.id]=[];
+      agentMemory[target.id].push({ type:'mistake', lesson:critic.name+' flagged: '+txt.slice(0,100) });
+    }
+  } catch {}
+}
+
+// ── CHECKOUT ─────────────────────────────────────────────────
+async function createCheckout() {
+  const domain = document.getElementById('checkout-domain').value.trim();
+  const price  = parseFloat(document.getElementById('checkout-price').value);
+  const email  = document.getElementById('checkout-email').value.trim();
+  const errEl  = document.getElementById('checkout-error');
+  const resEl  = document.getElementById('checkout-result');
+  const btn    = document.getElementById('checkout-btn');
+
+  errEl.style.display = 'none';
+  resEl.style.display = 'none';
+
+  if (!domain) { errEl.textContent='Enter a domain name.'; errEl.style.display='block'; return; }
+  if (!price||price<=0) { errEl.textContent='Enter a valid price.'; errEl.style.display='block'; return; }
+
+  btn.textContent='⟳ CREATING...'; btn.disabled=true;
+
+  try {
+    const res  = await fetch('/api/stripe/checkout', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ domainName:domain, price, buyerEmail:email }),
+    });
+    const data = await res.json();
+    if (data.url) {
+      savedDeals.push({ domain, price, email, status:'payment_pending', sessionId:data.sessionId, createdAt:new Date().toISOString() });
+      localStorage.setItem('deals', JSON.stringify(savedDeals));
+      renderDeals();
+      resEl.innerHTML = `<div style="padding:12px;background:rgba(0,255,178,.08);border:1px solid rgba(0,255,178,.3);border-radius:9px">
+        <div style="color:var(--green);font-size:11px;font-weight:700;margin-bottom:8px">✓ Payment link created!</div>
+        <a href="${data.url}" target="_blank" style="color:var(--green);font-size:11px;word-break:break-all">${data.url}</a>
+        <div style="margin-top:8px"><button class="btn btn-green" style="padding:8px 16px;font-size:10px" onclick="window.open('${data.url}')">OPEN CHECKOUT →</button></div>
+      </div>`;
+      resEl.style.display='block';
+    } else {
+      errEl.textContent = data.error||'Failed to create checkout.';
+      errEl.style.display='block';
+    }
+  } catch(e) {
+    errEl.textContent='Network error: '+e.message;
+    errEl.style.display='block';
+  }
+  btn.textContent='⚡ GENERATE STRIPE PAYMENT LINK'; btn.disabled=false;
+}
+
+function renderDeals() {
+  const el = document.getElementById('deals-list');
+  if (!savedDeals.length) { el.innerHTML='<div style="color:#333;font-size:11px">No deals yet.</div>'; return; }
+  el.innerHTML = savedDeals.map(d=>`
+    <div class="table-row">
+      <div style="flex:1;font-size:13px;color:#ddd">${d.domain}</div>
+      <div style="font-size:11px;color:#555">${d.email||'—'}</div>
+      <div style="font-size:16px;font-weight:700;color:#fff">$${(d.price||0).toLocaleString()}</div>
+      <span class="badge" style="background:${d.status==='paid'?'rgba(34,197,94,.12)':'rgba(251,191,36,.12)'};color:${d.status==='paid'?'var(--sold)':'var(--yellow)'};border:1px solid ${d.status==='paid'?'rgba(34,197,94,.3)':'rgba(251,191,36,.3)'}">${d.status}</span>
+    </div>`).join('');
+}
+
+// ── WAR ROOM ─────────────────────────────────────────────────
+function addWarRoom(msg) {
+  const agent = AGENTS.find(a=>a.id===msg.from)||{name:'SYSTEM',avatar:'⚙',color:'#38bdf8'};
+  const to    = AGENTS.find(a=>a.id===msg.to);
+  warRoomMsgs.unshift({ ...msg, agent, to, time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) });
+  renderWarRoom();
+}
+
+function renderWarRoom() {
+  const el = document.getElementById('warroom-msgs');
+  if (!warRoomMsgs.length) return;
+  el.innerHTML = warRoomMsgs.slice(0,30).map(m=>`
+    <div class="wr-msg" style="border-color:${m.agent.color}22">
+      <div class="wr-header">
+        <span>${m.agent.avatar}</span>
+        <span class="wr-from" style="color:${m.agent.color}">${m.agent.name}</span>
+        ${m.to?`<span style="color:#444;font-size:9px">→</span><span>${m.to.avatar}</span><span class="wr-from" style="color:${m.to.color}">${m.to.name}</span>`:''}
+        <span class="wr-time">${m.time}</span>
+        <span style="font-size:9px;padding:1px 7px;border-radius:10px;background:${TYPE_COLORS[m.type]||'#555'}18;color:${TYPE_COLORS[m.type]||'#555'};border:1px solid ${TYPE_COLORS[m.type]||'#555'}33">${m.type}</span>
+      </div>
+      <div class="wr-text">${m.text}</div>
+    </div>`).join('');
+}
+
+async function runPipeline() {
+  const btn = document.getElementById('pipeline-btn');
+  btn.textContent='⟳ RUNNING...'; btn.disabled=true;
+  addWarRoom({from:'analyst',type:'broadcast',text:'Pipeline started. ANALYST scanning AI tools niche...'});
+
+  const steps = [
+    {agentId:'analyst',    prompt:'Analyze AI tools domain niche. Score top 3 sub-niches 1-10. Give SCOUT keyword targets.'},
+    {agentId:'scout',      prompt:'Find 5 available domains in the AI tools niche. Include .com and .io options with costs.'},
+    {agentId:'appraiser',  prompt:'Value the top 3 AI tool domains SCOUT found. Give low/mid/high estimates and buyer profiles.'},
+    {agentId:'flipper',    prompt:'Create Afternic listing copy and 2 outreach emails for the highest valued AI domain.'},
+    {agentId:'negotiator', prompt:'A buyer offers 30% below asking price. Write the exact counter-offer script to close at full price.'},
+  ];
+
+  const outputs = {};
+  for (const step of steps) {
+    const agent  = AGENTS.find(a=>a.id===step.agentId);
+    const peerCtx = Object.entries(outputs).map(([k,v])=>`${k.toUpperCase()}:\n${v.slice(0,300)}`).join('\n\n');
+    const memory  = (agentMemory[step.agentId]||[]).map((m,i)=>`${i+1}. ${m.lesson}`).join('\n');
+    const sys     = agent.prompt + (memory?'\n\nLESSONS:\n'+memory:'') + (peerCtx?'\n\nPEER INTEL:\n'+peerCtx:'');
+
+    try {
+      const res  = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST', headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,system:sys,messages:[{role:'user',content:step.prompt}]}),
+      });
+      const data  = await res.json();
+      const reply = data.content?.[0]?.text||'Error';
+      outputs[step.agentId] = reply;
+      addWarRoom({from:step.agentId,type:'broadcast',text:'✓ Complete.\n\n'+reply.slice(0,280)+(reply.length>280?'...':'')});
+      extractLesson(agent, step.prompt, reply);
+      await new Promise(r=>setTimeout(r,400));
+    } catch(e) {
+      addWarRoom({from:step.agentId,type:'broadcast',text:'⚠️ Error: '+e.message});
+    }
+  }
+
+  addWarRoom({from:'analyst',type:'consensus',text:'Pipeline complete ✓ All 5 agents finished. Memory updated. Check each agent\'s lessons in the Agents tab.'});
+  const runs = parseInt(localStorage.getItem('pipelineRuns')||'0') + 1;
+  localStorage.setItem('pipelineRuns', runs);
+  renderDashboard();
+  btn.textContent='⚡ RUN PIPELINE'; btn.disabled=false;
+}
+</script>
+</body>
+</html>
