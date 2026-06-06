@@ -420,18 +420,47 @@ async function runSearch() {
   const btn = document.getElementById('search-btn');
   btn.textContent = '⟳ SEARCHING...'; btn.disabled = true;
   const el = document.getElementById('search-results');
-  el.innerHTML = '<div style="color:var(--green);font-size:11px;text-align:center;padding:20px">Querying GoDaddy API...</div>';
+  el.innerHTML = '<div style="color:var(--green);font-size:11px;text-align:center;padding:20px">🌐 Querying GoDaddy API in real time...</div>';
 
-  await new Promise(r => setTimeout(r, 800));
-  const results = selectedTlds.map(tld => {
-    const domain    = kw.toLowerCase().replace(/\s+/g,'') + tld;
-    const available = Math.random() > 0.35;
-    const prices    = {'.com':12.99,'.io':39.99,'.ai':79,'.co':29,'.net':13.99,'.app':14,'.dev':12,'.org':13};
-    const price     = available ? (prices[tld]||15) : null;
-    const flipValue = available ? Math.round(price*(15+Math.random()*60)) : null;
-    const roi       = available ? Math.round(((flipValue-price)/price)*100) : 0;
-    return { domain, tld, available, price, flipValue, roi };
-  });
+  let results = [];
+  try {
+    const apiRes = await fetch('/api/domains', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ action: 'check', keyword: kw, tlds: selectedTlds }),
+    });
+    const data = await apiRes.json();
+    const prices = {'.com':12.99,'.io':39.99,'.ai':79,'.co':29,'.net':13.99,'.app':14,'.dev':12,'.org':13};
+    
+    if (data.domains) {
+      results = data.domains.map(d => {
+        const tld = '.' + d.domain.split('.').slice(1).join('.');
+        const price = d.price || prices[tld] || 15;
+        const flipValue = d.available ? Math.round(price * (15 + Math.random() * 40)) : null;
+        const roi = d.available && flipValue ? Math.round(((flipValue - price) / price) * 100) : 0;
+        return { domain: d.domain, tld, available: d.available, price: d.available ? price : null, flipValue, roi, real: d.real };
+      });
+    }
+    
+    // Show real vs fallback indicator
+    const isReal = data.real && !data.fallback;
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:10px">
+      <div style="width:7px;height:7px;border-radius:50%;background:${isReal?'var(--green)':'var(--yellow)'}"></div>
+      <span style="color:${isReal?'var(--green)':'var(--yellow)'}">${isReal?'✓ LIVE GoDaddy data':'⚠ Estimated data — add GoDaddy API keys to Vercel for live results'}</span>
+    </div>`;
+    
+  } catch(e) {
+    console.error('Search error:', e);
+    const prices = {'.com':12.99,'.io':39.99,'.ai':79,'.co':29,'.net':13.99,'.app':14,'.dev':12,'.org':13};
+    results = selectedTlds.map(tld => {
+      const domain = kw.toLowerCase().replace(/\s+/g,'') + tld;
+      const available = Math.random() > 0.35;
+      const price = available ? (prices[tld]||15) : null;
+      const flipValue = available ? Math.round(price*(15+Math.random()*60)) : null;
+      const roi = available ? Math.round(((flipValue-price)/price)*100) : 0;
+      return { domain, tld, available, price, flipValue, roi, real: false };
+    });
+  }
 
   const avail = results.filter(r=>r.available);
   const taken = results.filter(r=>!r.available);
@@ -464,7 +493,10 @@ function resultCard(r) {
     <div class="result-btns">
       <button class="btn btn-green" onclick="saveDomain(${JSON.stringify(r).replace(/"/g,'&quot;')})">💾 SAVE</button>
       <button class="btn btn-outline" onclick="goCheckout('${r.domain}',${r.price})">BUY</button>
-    </div>` : '<div style="font-size:10px;color:#333;margin-top:4px">TAKEN</div>'}
+    </div>
+    <button onclick="scoutApprove('${r.domain}',${r.price})" style="width:100%;margin-top:6px;padding:7px;border-radius:7px;border:1px solid #00FFB233;background:#00FFB211;color:var(--green);font-family:monospace;font-size:9px;cursor:pointer;letter-spacing:1px">
+      🔭 ASK SCOUT + AUTO-LIST ON AFTERNIC
+    </button>` : '<div style="font-size:10px;color:#333;margin-top:4px">TAKEN</div>'}
   </div>`;
 }
 
@@ -725,6 +757,110 @@ async function runPipeline() {
   renderDashboard();
   btn.textContent='⚡ RUN PIPELINE'; btn.disabled=false;
 }
+
+// ── SCOUT APPROVE + AFTERNIC AUTO-LIST ──────────────────────
+async function scoutApprove(domain, regPrice) {
+  // Show modal
+  const modal = document.createElement('div');
+  modal.id = 'scout-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:#0d0d0d;border:1px solid #00FFB233;border-radius:14px;padding:24px;max-width:520px;width:100%;max-height:80vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="color:#00FFB2;font-size:13px;font-weight:700">🔭 SCOUT EVALUATION</div>
+        <button onclick="document.getElementById('scout-modal').remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:18px">✕</button>
+      </div>
+      <div style="color:#555;font-size:11px;margin-bottom:14px">Domain: <span style="color:#ddd">${domain}</span> · Register: <span style="color:#00FFB2">$${regPrice}</span></div>
+      <div id="scout-response" style="color:#888;font-size:12px;line-height:1.7;font-family:Georgia,serif;min-height:80px">
+        <div style="color:#00FFB2">🔭 SCOUT is analyzing ${domain}...</div>
+      </div>
+      <div id="afternic-section" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #1a1a1a">
+        <div style="color:#FBBF24;font-size:11px;font-weight:700;margin-bottom:10px">⚡ AUTO-LIST ON AFTERNIC</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input id="list-price" type="number" placeholder="Set your listing price ($)" style="flex:1;background:#111;border:1px solid #1a1a1a;border-radius:7px;padding:8px 12px;color:#ddd;font-family:monospace;font-size:12px;outline:none" />
+          <button onclick="autoListAfternic('${domain}')" style="padding:8px 16px;border-radius:7px;border:none;background:linear-gradient(135deg,#00FFB2,#00c896);color:#000;font-family:monospace;font-size:10px;font-weight:700;cursor:pointer">LIST NOW →</button>
+        </div>
+        <div id="listing-result" style="font-size:11px;color:#555"></div>
+        <div style="font-size:9px;color:#383838;margin-top:8px">Also lists on Dan.com · Afternic reaches 75M+ buyers</div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  // Call SCOUT agent
+  const scoutAgent = AGENTS.find(a => a.id === 'scout');
+  try {
+    const res = await fetch('/api/agent', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        system: scoutAgent.prompt,
+        messages: [{ role: 'user', content: `Evaluate this domain for flipping: ${domain}\nRegistration cost: $${regPrice}\n\nGive me: 1) BUY or SKIP verdict 2) Realistic flip price 3) Ideal buyer type 4) Suggested listing price on Afternic. Be concise.` }],
+        max_tokens: 400,
+      }),
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Error getting SCOUT response';
+    
+    document.getElementById('scout-response').innerHTML = reply.replace(/\n/g, '<br>');
+    
+    // Show Afternic listing section if SCOUT says buy
+    if (reply.toLowerCase().includes('buy') || reply.toLowerCase().includes('yes') || reply.toLowerCase().includes('strong')) {
+      document.getElementById('afternic-section').style.display = 'block';
+      // Extract suggested price from SCOUT response
+      const priceMatch = reply.match(/\$([\d,]+)/g);
+      if (priceMatch && priceMatch.length > 1) {
+        const suggestedPrice = priceMatch[1].replace(/[$,]/g, '');
+        document.getElementById('list-price').value = suggestedPrice;
+      }
+    }
+  } catch(e) {
+    document.getElementById('scout-response').textContent = 'Error: ' + e.message;
+  }
+}
+
+async function autoListAfternic(domain) {
+  const price = document.getElementById('list-price').value;
+  if (!price) { alert('Enter a listing price'); return; }
+  
+  const resultEl = document.getElementById('listing-result');
+  resultEl.innerHTML = '<span style="color:#00FFB2">⟳ Submitting to Afternic...</span>';
+
+  try {
+    const res = await fetch('/api/domains', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ action: 'list_afternic', domain, price: parseFloat(price) }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      resultEl.innerHTML = `
+        <div style="padding:10px;background:#00FFB211;border:1px solid #00FFB233;border-radius:8px;margin-top:8px">
+          <div style="color:#00FFB2;font-weight:700;margin-bottom:6px">✓ Listed Successfully!</div>
+          <div style="color:#666;font-size:10px;line-height:1.8">
+            ${data.instructions ? data.instructions.map(i => `<div>${i}</div>`).join('') : ''}
+          </div>
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <a href="${data.afternic_url}" target="_blank" style="font-size:9px;padding:4px 10px;border-radius:6px;background:#A855F722;color:#A855F7;border:1px solid #A855F733;text-decoration:none">Afternic →</a>
+            <a href="${data.dan_url}" target="_blank" style="font-size:9px;padding:4px 10px;border-radius:6px;background:#34d39922;color:#34d399;border:1px solid #34d39933;text-decoration:none">Dan.com →</a>
+          </div>
+        </div>`;
+      
+      // Save to portfolio
+      savedDomains.push({ name: domain, status: 'listed', cost: 0, flipValue: parseFloat(price), niche: 'AI Tools' });
+      localStorage.setItem('domains', JSON.stringify(savedDomains));
+      renderDashboard();
+    } else {
+      resultEl.innerHTML = `<div style="color:#FBBF24;font-size:11px">⚠ ${data.error || 'Listing queued — complete setup on Afternic.com manually'}</div>
+        <div style="margin-top:8px">
+          <a href="https://afternic.com" target="_blank" style="font-size:10px;color:#A855F7">Go to Afternic.com →</a>
+        </div>`;
+    }
+  } catch(e) {
+    resultEl.innerHTML = `<span style="color:#ef4444">Error: ${e.message}</span>`;
+  }
+}
+
 </script>
 </body>
 </html>
