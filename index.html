@@ -73,7 +73,7 @@
     .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 8px; }
     .result-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; transition: border-color 0.2s; }
     .result-card.available:hover { border-color: rgba(0,255,178,.3); }
-    .result-card.taken { opacity: 0.4; }
+    .result-card.taken { opacity: 1; background: #0d0808; border-color: #ef444433; }
     .result-domain { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
     .result-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
     .result-price { font-size: 22px; font-weight: 700; color: #fff; }
@@ -473,7 +473,7 @@ async function runSearch() {
     </div>
     ${avail.length ? `<div style="font-size:9px;color:#333;letter-spacing:3px;margin-bottom:10px">✓ AVAILABLE</div>
     <div class="result-grid">${avail.map(r => resultCard(r)).join('')}</div>` : ''}
-    ${taken.length ? `<div style="font-size:9px;color:#333;letter-spacing:3px;margin:16px 0 10px">✗ TAKEN</div>
+    ${taken.length ? `<div style="font-size:10px;color:#ef4444;letter-spacing:3px;margin:16px 0 10px;font-weight:700">✗ TAKEN — NOT AVAILABLE</div>
     <div class="result-grid">${taken.map(r => resultCard(r)).join('')}</div>` : ''}
   `;
   btn.textContent = 'SEARCH →'; btn.disabled = false;
@@ -496,7 +496,7 @@ function resultCard(r) {
     </div>
     <button onclick="scoutApprove('${r.domain}',${r.price})" style="width:100%;margin-top:6px;padding:7px;border-radius:7px;border:1px solid #00FFB233;background:#00FFB211;color:var(--green);font-family:monospace;font-size:9px;cursor:pointer;letter-spacing:1px">
       🔭 ASK SCOUT + AUTO-LIST ON AFTERNIC
-    </button>` : '<div style="font-size:10px;color:#333;margin-top:4px">TAKEN</div>'}
+    </button>` : '<div style="font-size:11px;color:#ef4444;font-weight:700;margin-top:4px">✗ TAKEN</div>'}
   </div>`;
 }
 
